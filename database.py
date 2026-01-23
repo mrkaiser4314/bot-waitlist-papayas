@@ -24,9 +24,7 @@ def get_db_connection():
         return None
     
     print(f"🔗 Conectando a: {database_url[:50]}...")  # Log para debug
-```
 
----
     
     try:
         conn = psycopg2.connect(database_url)
