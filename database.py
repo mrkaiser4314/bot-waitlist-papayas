@@ -10,10 +10,23 @@ from datetime import datetime
 
 def get_db_connection():
     """Obtiene conexión a PostgreSQL usando DATABASE_URL de Railway"""
+    # Forzar uso SOLO de DATABASE_URL explícita
     database_url = os.getenv('DATABASE_URL')
+    
     if not database_url:
         print("❌ No se encontró DATABASE_URL")
         return None
+    
+    # RECHAZAR si tiene hostname interno
+    if 'railway.internal' in database_url:
+        print(f"❌ DATABASE_URL usa hostname interno: {database_url}")
+        print("❌ Configurar DATABASE_URL con hostname público")
+        return None
+    
+    print(f"🔗 Conectando a: {database_url[:50]}...")  # Log para debug
+```
+
+---
     
     try:
         conn = psycopg2.connect(database_url)
