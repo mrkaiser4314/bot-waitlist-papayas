@@ -347,7 +347,7 @@ class TicketCloseView(discord.ui.View):
         is_player = interaction.user.id == self.player_id
         
         if not (is_tester or is_player):
-            await interaction.response.send_message("❌ Solo el tester o el jugador pueden cerrar el ticket", ephemeral=True)
+            await interaction.followup.send("❌ Solo el tester o el jugador pueden cerrar el ticket", ephemeral=True)
             return
         
         # Enviar log al canal de TICKET logs antes de cerrar
@@ -408,7 +408,7 @@ class TicketCloseView(discord.ui.View):
         except Exception as e:
             print(f"❌ Error enviando log de ticket: {e}")
         
-        await interaction.response.send_message(f"🔒 Ticket cerrado por {interaction.user.mention}")
+        await interaction.followup.send(f"🔒 Ticket cerrado por {interaction.user.mention}")
         await asyncio.sleep(2)
         
         try:
@@ -429,7 +429,7 @@ class WaitlistView(discord.ui.View):
         waitlist = data['waitlists'][self.modo]
         
         if not waitlist['active']:
-            await interaction.response.send_message("❌ La waitlist está cerrada", ephemeral=True)
+            await interaction.followup.send("❌ La waitlist está cerrada", ephemeral=True)
             return
         
         user_id = str(interaction.user.id)
@@ -449,22 +449,22 @@ class WaitlistView(discord.ui.View):
             embed.add_field(name="Tiempo restante", value=f"**{days_left} días y {hours_left} horas**")
             embed.add_field(name="Disponible", value=f"<t:{int(end_date.timestamp())}:R>")
             
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
             return
         
         if user_id in waitlist['queue']:
-            await interaction.response.send_message("⚠️ Ya estás en la cola", ephemeral=True)
+            await interaction.followup.send("⚠️ Ya estás en la cola", ephemeral=True)
             return
         
         if len(waitlist['queue']) >= MAX_QUEUE_SIZE:
-            await interaction.response.send_message(f"⚠️ La cola está llena (máximo {MAX_QUEUE_SIZE} jugadores)", ephemeral=True)
+            await interaction.followup.send(f"⚠️ La cola está llena (máximo {MAX_QUEUE_SIZE} jugadores)", ephemeral=True)
             return
         
         waitlist['queue'].append(user_id)
         save_data()
         
         position = len(waitlist['queue'])
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ Te has unido a la waitlist de **{self.modo}**\nPosición: **#{position}**",
             ephemeral=True
         )
@@ -476,19 +476,19 @@ class WaitlistView(discord.ui.View):
         user_id = str(interaction.user.id)
         
         if user_id not in waitlist['queue']:
-            await interaction.response.send_message("⚠️ No estás en la cola", ephemeral=True)
+            await interaction.followup.send("⚠️ No estás en la cola", ephemeral=True)
             return
         
         waitlist['queue'].remove(user_id)
         save_data()
         
-        await interaction.response.send_message(f"✅ Has salido de la waitlist de **{self.modo}**", ephemeral=True)
+        await interaction.followup.send(f"✅ Has salido de la waitlist de **{self.modo}**", ephemeral=True)
         await self.update_panel(interaction)
     
     @discord.ui.button(label="Tester", style=discord.ButtonStyle.blurple, emoji="👨‍🏫", custom_id="tester")
     async def tester_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not any(role.id == TESTER_ROLE_ID for role in interaction.user.roles):
-            await interaction.response.send_message("❌ Solo los testers pueden usar este botón", ephemeral=True)
+            await interaction.followup.send("❌ Solo los testers pueden usar este botón", ephemeral=True)
             return
         
         if self.modo not in data['waitlists']:
@@ -500,31 +500,31 @@ class WaitlistView(discord.ui.View):
         if user_id in waitlist.get('testers', []):
             waitlist['testers'].remove(user_id)
             save_data()
-            await interaction.response.send_message(f"✅ Has dejado de testear **{self.modo}**", ephemeral=True)
+            await interaction.followup.send(f"✅ Has dejado de testear **{self.modo}**", ephemeral=True)
         else:
             if 'testers' not in waitlist:
                 waitlist['testers'] = []
             waitlist['testers'].append(user_id)
             save_data()
-            await interaction.response.send_message(f"✅ Ahora estás testeando **{self.modo}**", ephemeral=True)
+            await interaction.followup.send(f"✅ Ahora estás testeando **{self.modo}**", ephemeral=True)
         
         await self.update_panel(interaction)
     
     @discord.ui.button(label="Next", style=discord.ButtonStyle.gray, emoji="⏭️", custom_id="next")
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not any(role.id == TESTER_ROLE_ID for role in interaction.user.roles):
-            await interaction.response.send_message("❌ Solo los testers pueden usar este botón", ephemeral=True)
+            await interaction.followup.send("❌ Solo los testers pueden usar este botón", ephemeral=True)
             return
         
         waitlist = data['waitlists'].get(self.modo, {'queue': [], 'testers': []})
         
         if not waitlist['queue']:
-            await interaction.response.send_message("⚠️ No hay jugadores en cola", ephemeral=True)
+            await interaction.followup.send("⚠️ No hay jugadores en cola", ephemeral=True)
             return
         
         tester_id = str(interaction.user.id)
         if tester_id not in waitlist.get('testers', []):
-            await interaction.response.send_message("❌ Debes presionar el botón **Tester** primero", ephemeral=True)
+            await interaction.followup.send("❌ Debes presionar el botón **Tester** primero", ephemeral=True)
             return
         
         next_user_id = waitlist['queue'].pop(0)
@@ -597,27 +597,27 @@ class WaitlistView(discord.ui.View):
                     }
                     save_data()
                     
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"✅ Ticket creado: {ticket_channel.mention}\n📩 DM enviado a {next_user.mention}",
                         ephemeral=True
                     )
                 else:
-                    await interaction.response.send_message("⚠️ Categoría no encontrada", ephemeral=True)
+                    await interaction.followup.send("⚠️ Categoría no encontrada", ephemeral=True)
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"⚠️ Configura la categoría con `/configurar-tickets`",
                     ephemeral=True
                 )
         except Exception as e:
             print(f"Error: {e}")
-            await interaction.response.send_message(f"❌ Error al procesar", ephemeral=True)
+            await interaction.followup.send(f"❌ Error al procesar", ephemeral=True)
         
         await self.update_panel(interaction)
     
     @discord.ui.button(label="Open/Close", style=discord.ButtonStyle.secondary, emoji="🔄", custom_id="toggle", row=1)
     async def toggle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not any(role.id == TESTER_ROLE_ID for role in interaction.user.roles):
-            await interaction.response.send_message("❌ Solo los testers pueden abrir/cerrar la waitlist", ephemeral=True)
+            await interaction.followup.send("❌ Solo los testers pueden abrir/cerrar la waitlist", ephemeral=True)
             return
         
         if self.modo not in data['waitlists']:
@@ -628,7 +628,7 @@ class WaitlistView(discord.ui.View):
         save_data()
         
         status = "🟢 Abierta" if waitlist['active'] else "🔴 Cerrada"
-        await interaction.response.send_message(f"✅ Waitlist de **{self.modo}**: {status}", ephemeral=True)
+        await interaction.followup.send(f"✅ Waitlist de **{self.modo}**: {status}", ephemeral=True)
         await self.update_panel(interaction)
     
     async def update_panel(self, interaction: discord.Interaction):
@@ -742,7 +742,7 @@ async def crear_waitlist(interaction: discord.Interaction, modo: str):
     data['panel_messages'][modo] = message.id
     save_data()
     
-    await interaction.response.send_message(f"✅ Panel de waitlist para **{modo}** creado", ephemeral=True)
+    await interaction.followup.send(f"✅ Panel de waitlist para **{modo}** creado", ephemeral=True)
 
 @bot.tree.command(name="configurar-tickets", description="Configura la categoría para crear tickets")
 @app_commands.describe(categoria="Categoría donde se crearán los tickets")
@@ -750,7 +750,7 @@ async def crear_waitlist(interaction: discord.Interaction, modo: str):
 async def configurar_tickets(interaction: discord.Interaction, categoria: discord.CategoryChannel):
     data['config']['ticket_category_id'] = categoria.id
     save_data()
-    await interaction.response.send_message(f"✅ Categoría de tickets configurada: {categoria.name}", ephemeral=True)
+    await interaction.followup.send(f"✅ Categoría de tickets configurada: {categoria.name}", ephemeral=True)
 
 @bot.tree.command(name="resultado", description="Publica resultado de test (tiers bajos)")
 @app_commands.describe(
@@ -800,9 +800,11 @@ async def resultado(
     es_premium: str
 ):
     if not any(role.id == TESTER_ROLE_ID for role in interaction.user.roles):
-        await interaction.response.send_message("❌ Solo los testers pueden usar este comando", ephemeral=True)
+        await interaction.followup.send("❌ Solo los testers pueden usar este comando", ephemeral=True)
         return
     
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
     await publicar_resultado(interaction, nick_mc, jugador_discord, interaction.user, modo, tier_antiguo, tier_nuevo, es_premium)
 
 @bot.tree.command(name="resultadohightier", description="Publica resultado de test (todos los tiers)")
@@ -863,9 +865,11 @@ async def resultadohightier(
     es_premium: str
 ):
     if not any(role.id == TESTER_ROLE_ID for role in interaction.user.roles):
-        await interaction.response.send_message("❌ Solo los testers pueden usar este comando", ephemeral=True)
+        await interaction.followup.send("❌ Solo los testers pueden usar este comando", ephemeral=True)
         return
     
+    await interaction.response.defer(ephemeral=True, thinking=True)
+
     await publicar_resultado(interaction, nick_mc, jugador_discord, interaction.user, modo, tier_antiguo, tier_nuevo, es_premium)
 
 async def publicar_resultado(
@@ -1011,7 +1015,7 @@ async def publicar_resultado(
             print(f"❌ Error agregando reacciones: {e}")
     
     # Responder a la interacción
-    await interaction.response.send_message(
+    await interaction.followup.send(
         f"✅ Resultado publicado para {jugador_discord.mention} en {resultado_channel.mention}",
         ephemeral=True
     )
@@ -1159,7 +1163,7 @@ async def banchiterlist(
     
     save_data()
     
-    await interaction.response.send_message(embed=embed)
+    await interaction.followup.send(embed=embed)
     
     # Remover todos los roles de tier
     try:
@@ -1306,7 +1310,7 @@ async def ver_bans(interaction: discord.Interaction):
     
     embed.set_footer(text=f"Total permanentes: {len(bans_permanentes)} | Total temporales: {len(bans_temporales)}")
     
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="toptester", description="Ver el tester del mes con más tests completados")
 async def toptester(interaction: discord.Interaction):
@@ -1342,7 +1346,7 @@ async def toptester(interaction: discord.Interaction):
             color=discord.Color.blue(),
             timestamp=datetime.now()
         )
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
         return
     
     # Ordenar testers por cantidad de tests
@@ -1405,11 +1409,11 @@ async def toptester(interaction: discord.Interaction):
         footer_text += " - Datos desde PostgreSQL"
     embed.set_footer(text=footer_text)
     
-    await interaction.response.send_message(embed=embed)
+    await interaction.followup.send(embed=embed)
 
 @bot.tree.command(name="test", description="Verifica que el bot esté funcionando")
 async def test(interaction: discord.Interaction):
-    await interaction.response.send_message("✅ ¡Bot funcionando correctamente!")
+    await interaction.followup.send("✅ ¡Bot funcionando correctamente!")
 
 @bot.tree.command(name="sacatester", description="Remueve un tester de la tabla de resultados")
 @app_commands.describe(
@@ -1428,7 +1432,7 @@ async def sacatester(interaction: discord.Interaction, tester: discord.User):
             tests_count += 1
     
     if tests_count == 0:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"❌ {tester.mention} no tiene tests registrados",
             ephemeral=True
         )
@@ -1451,7 +1455,7 @@ async def sacatester(interaction: discord.Interaction, tester: discord.User):
         inline=False
     )
     
-    await interaction.response.send_message(
+    await interaction.followup.send(
         embed=embed_confirm,
         ephemeral=True
     )
@@ -1515,14 +1519,14 @@ async def añadetesteratoptester(interaction: discord.Interaction, tester: disco
     """Añade tests falsos a un tester para reconstruir la tabla de /toptester"""
     
     if cantidad <= 0:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "❌ La cantidad debe ser mayor a 0",
             ephemeral=True
         )
         return
     
     if cantidad > 1000:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "❌ La cantidad no puede ser mayor a 1000 (para evitar errores)",
             ephemeral=True
         )
@@ -1588,7 +1592,7 @@ async def añadetesteratoptester(interaction: discord.Interaction, tester: disco
     )
     embed_success.set_footer(text=f"Añadido por: {interaction.user}")
     
-    await interaction.response.send_message(embed=embed_success, ephemeral=True)
+    await interaction.followup.send(embed=embed_success, ephemeral=True)
     
     # Enviar a canal de logs
     resultado_channel_id = data.get('config', {}).get('resultado_channel_id', 1459289305414635560)
@@ -1611,7 +1615,7 @@ async def ver_cooldowns(interaction: discord.Interaction):
     cooldowns = data.get('cooldowns', {})
     
     if not cooldowns:
-        await interaction.response.send_message("✅ No hay cooldowns activos", ephemeral=True)
+        await interaction.followup.send("✅ No hay cooldowns activos", ephemeral=True)
         return
     
     embed = discord.Embed(
@@ -1657,7 +1661,7 @@ async def ver_cooldowns(interaction: discord.Interaction):
             print(f"Error mostrando cooldown de {user_id}: {e}")
             pass
     
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 @bot.tree.command(name="cooldowndesactivar", description="Quita el cooldown de un jugador")
@@ -1687,7 +1691,7 @@ async def cooldowndesactivar(
     jugador_id = str(jugador.id)
     
     if jugador_id not in data.get('cooldowns', {}):
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"❌ {jugador.mention} no tiene ningún cooldown activo",
             ephemeral=True
         )
@@ -1707,7 +1711,7 @@ async def cooldowndesactivar(
         embed.add_field(name="🎮 Modalidades", value="Todas", inline=True)
         embed.set_footer(text=f"Por: {interaction.user}")
         
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
         
         # Notificar al jugador
         try:
@@ -1729,7 +1733,7 @@ async def cooldowndesactivar(
                 data['cooldowns'][jugador_id][game_mode] = old_data
         
         if modo not in data['cooldowns'][jugador_id]:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ {jugador.mention} no tiene cooldown activo en **{modo}**",
                 ephemeral=True
             )
@@ -1752,7 +1756,7 @@ async def cooldowndesactivar(
         embed.add_field(name="🎮 Modalidad", value=f"{MODE_EMOJIS.get(modo, '🎮')} {modo}", inline=True)
         embed.set_footer(text=f"Por: {interaction.user}")
         
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
         
         # Notificar al jugador
         try:
@@ -1779,12 +1783,12 @@ async def send_message(interaction: discord.Interaction, canal: discord.TextChan
     
     try:
         await canal.send(mensaje)
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ Mensaje enviado a {canal.mention}",
             ephemeral=True
         )
     except Exception as e:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"❌ Error: {e}",
             ephemeral=True
         )
