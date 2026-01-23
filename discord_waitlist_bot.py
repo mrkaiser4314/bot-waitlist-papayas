@@ -987,13 +987,35 @@ async def publicar_resultado(
             'puntos_totales': puntos_totales,
             'fecha': datetime.now().isoformat()
         }
+        
         if database.add_resultado(resultado_obj):
             print(f"✅ Resultado guardado en PostgreSQL")
         else:
             print(f"⚠️ No se pudo guardar en PostgreSQL (usando solo memoria)")
     
+    # <<<< AÑADE ESTE CÓDIGO AQUÍ (DESPUÉS DEL BLOQUE DE ARRIBA) >>>>
+    
+    # Guardar también jugador en PostgreSQL
+    if POSTGRESQL_AVAILABLE:
+        jugador_obj = {
+            'discord_id': str(jugador_discord.id),
+            'nick_mc': nick_mc,
+            'discord_name': str(jugador_discord),
+            'tier_por_modalidad': data['jugadores'][jugador_id].get('tier_por_modalidad', {}),
+            'puntos_por_modalidad': data['jugadores'][jugador_id].get('puntos_por_modalidad', {}),
+            'puntos_totales': puntos_totales,
+            'es_premium': data['jugadores'][jugador_id].get('es_premium', 'no')
+        }
+        if database.save_or_update_jugador(jugador_obj):
+            print(f"✅ Jugador guardado en PostgreSQL")
+        else:
+            print(f"⚠️ No se pudo guardar jugador en PostgreSQL")
+    
+    # <<<< FIN DEL CÓDIGO A AÑADIR >>>>
+    
     end_date = add_cooldown(jugador_id, modo)
     save_data()
+
     
     # Enviar al canal de RESULTADOS con reacciones
     resultado_channel_id = data.get('config', {}).get('resultado_channel_id', 1459289305414635560)
