@@ -10,27 +10,25 @@ from datetime import datetime
 
 def get_db_connection():
     """Obtiene conexión a PostgreSQL usando DATABASE_URL de Railway"""
-    # Forzar uso SOLO de DATABASE_URL explícita
     database_url = os.getenv('DATABASE_URL')
     
     if not database_url:
         print("❌ No se encontró DATABASE_URL")
         return None
     
-    # RECHAZAR si tiene hostname interno
     if 'railway.internal' in database_url:
         print(f"❌ DATABASE_URL usa hostname interno: {database_url}")
-        print("❌ Configurar DATABASE_URL con hostname público")
+        print("❌ Debe configurarse con hostname público")
         return None
     
-    print(f"🔗 Conectando a: {database_url[:50]}...")  # Log para debug
-
+    print(f"🔗 Conectando a PostgreSQL...")
     
     try:
         conn = psycopg2.connect(database_url)
+        print("✅ Conexión exitosa")
         return conn
     except Exception as e:
-        print(f"❌ Error conectando a PostgreSQL: {e}")
+        print(f"❌ Error: {e}")
         return None
 
 def init_database():
@@ -110,22 +108,82 @@ def add_resultado(resultado_data):
              modalidad, tier_antiguo, tier_nuevo, puntos_obtenidos, puntos_totales, fecha)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            resultado_data['nick_mc'],
+            resultado_data.get('nick_mc'),
             resultado_data['jugador_id'],
-            resultado_data['jugador_name'],
+            resultado_data.get('jugador_name'),
             resultado_data['tester_id'],
-            resultado_data['tester_name'],
-            resultado_data['modalidad'],
-            resultado_data['tier_antiguo'],
-            resultado_data['tier_nuevo'],
-            resultado_data['puntos_obtenidos'],
-            resultado_data['puntos_totales'],
+            resultado_data.get('tester_name'),
+            resultado_data.get('modalidad'),
+            resultado_data.get('tier_antiguo'),
+            resultado_data.get('tier_nuevo'),
+            resultado_data.get('puntos_obtenidos'),
+            resultado_data.get('puntos_totales'),
             datetime.fromisoformat(resultado_data['fecha']) if 'fecha' in resultado_data else datetime.now()
         ))
         conn.commit()
         return True
     except Exception as e:
         print(f"❌ Error añadiendo resultado: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+def save_or_update_jugador(jugador_data):
+    """Guarda o actualiza un jugador en la base de datos"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        cur = conn.cursor()
+        
+        # Verificar si el jugador ya existe
+        cur.execute("SELECT discord_id FROM jugadores WHERE discord_id = %s", 
+                   (jugador_data['discord_id'],))
+        exists = cur.fetchone()
+        
+        if exists:
+            # Actualizar jugador existente
+            cur.execute("""
+                UPDATE jugadores 
+                SET nick_mc = %s,
+                    discord_name = %s,
+                    tier_por_modalidad = %s,
+                    puntos_por_modalidad = %s,
+                    puntos_totales = %s,
+                    es_premium = %s
+                WHERE discord_id = %s
+            """, (
+                jugador_data.get('nick_mc'),
+                jugador_data.get('discord_name'),
+                json.dumps(jugador_data.get('tier_por_modalidad', {})),
+                json.dumps(jugador_data.get('puntos_por_modalidad', {})),
+                jugador_data.get('puntos_totales', 0),
+                jugador_data.get('es_premium', 'no'),
+                jugador_data['discord_id']
+            ))
+        else:
+            # Insertar nuevo jugador
+            cur.execute("""
+                INSERT INTO jugadores 
+                (discord_id, nick_mc, discord_name, tier_por_modalidad, 
+                 puntos_por_modalidad, puntos_totales, es_premium)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                jugador_data['discord_id'],
+                jugador_data.get('nick_mc'),
+                jugador_data.get('discord_name'),
+                json.dumps(jugador_data.get('tier_por_modalidad', {})),
+                json.dumps(jugador_data.get('puntos_por_modalidad', {})),
+                jugador_data.get('puntos_totales', 0),
+                jugador_data.get('es_premium', 'no')
+            ))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"❌ Error guardando jugador: {e}")
         conn.rollback()
         return False
     finally:
