@@ -867,9 +867,7 @@ class WaitlistView(discord.ui.View):
                     view = TicketCloseView(next_user.id)
                     
                     # PRIMERO: Mensaje con menciones (esto SÍ notifica)
-                    await ticket_channel.send(
-                        f"🎫 {next_user.mention} - Tu test de **{self.modo}** con {interaction.user.mention}"
-                    )
+                    await ticket_channel.send(f"{next_user.mention} {interaction.user.mention}")
                     
                     # DESPUÉS: Embeds con la información
                     await ticket_channel.send(embed=ticket_embed)
@@ -1320,10 +1318,8 @@ async def publicar_resultado(
     resultado_channel = interaction.guild.get_channel(resultado_channel_id)
     
     if resultado_channel:
-        # PRIMERO: Enviar mensaje con mención (esto SÍ notifica)
-        await resultado_channel.send(
-            f"🎮 {jugador_discord.mention} - Nuevo resultado de test en **{modo}**"
-        )
+        # PRIMERO: Mensaje con mención (esto SÍ notifica)
+        await resultado_channel.send(jugador_discord.mention)
         
         # DESPUÉS: Enviar embed con la info detallada
         resultado_message = await resultado_channel.send(embed=embed)
