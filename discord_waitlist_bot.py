@@ -185,88 +185,57 @@ def create_initial_data():
     }
 
 def load_data():
-    backup_file = DATA_FILE.replace('.json', '_backup.json')
+    if not os.path.exists(DATA_FILE):
+        print(f"⚠️ {DATA_FILE} no existe, creando nuevo...")
+        initial_data = create_initial_data()
+        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(initial_data, f, indent=2, ensure_ascii=False)
+        print(f"✅ {DATA_FILE} creado exitosamente")
+        return initial_data
     
-    # Intentar cargar archivo principal
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                
-                # Verificar integridad básica
-                if 'resultados' in data:
-                    total_resultados = len(data.get('resultados', []))
-                    total_jugadores = len(data.get('jugadores', {}))
-                    print(f"✅ Datos cargados: {total_resultados} resultados, {total_jugadores} jugadores")
-                
-                # Asegurar que existan todas las claves necesarias
-                if 'waitlists' not in data:
-                    data['waitlists'] = {mode: {'active': False, 'queue': [], 'testers': []} for mode in GAME_MODES}
-                if 'jugadores' not in data:
-                    data['jugadores'] = {}
-                if 'cooldowns' not in data:
-                    data['cooldowns'] = {}
-                if 'bans_temporales' not in data:
-                    data['bans_temporales'] = {}
-                if 'resultados' not in data:
-                    data['resultados'] = []
-                if 'castigos' not in data:
-                    data['castigos'] = []
-                if 'tickets' not in data:
-                    data['tickets'] = {}
-                if 'panel_messages' not in data:
-                    data['panel_messages'] = {}
-                if 'config' not in data:
-                    data['config'] = {
-                        'ticket_category_id': None,
-                        'ticket_logs_channel_id': 1459298622930813121,
-                        'resultado_channel_id': 1459289305414635560
-                    }
-                # Migrar log_channel_id antiguo a ticket_logs_channel_id
-                if 'log_channel_id' in data['config'] and 'ticket_logs_channel_id' not in data['config']:
-                    data['config']['ticket_logs_channel_id'] = data['config']['log_channel_id']
-                # Agregar resultado_channel_id si no existe
-                if 'resultado_channel_id' not in data['config']:
-                    data['config']['resultado_channel_id'] = 1459289305414635560
-                return data
-        except Exception as e:
-            print(f"❌ Error cargando {DATA_FILE}: {e}")
-            print(f"🔄 Intentando cargar desde backup...")
-            
-            # Intentar cargar desde backup
-            if os.path.exists(backup_file):
-                try:
-                    with open(backup_file, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                        print(f"✅ Datos recuperados desde backup!")
-                        return data
-                except Exception as backup_error:
-                    print(f"❌ Error cargando backup: {backup_error}")
-    
-    # Si no hay archivo o falló todo, crear nuevo
-    print(f"⚠️ Creando archivo de datos nuevo...")
-    initial_data = create_initial_data()
-    with open(DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(initial_data, f, indent=2, ensure_ascii=False)
-    print(f"✅ {DATA_FILE} creado exitosamente")
-    return initial_data
+    try:
+        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if 'waitlists' not in data:
+                data['waitlists'] = {mode: {'active': False, 'queue': [], 'testers': []} for mode in GAME_MODES}
+            if 'jugadores' not in data:
+                data['jugadores'] = {}
+            if 'cooldowns' not in data:
+                data['cooldowns'] = {}
+            if 'bans_temporales' not in data:
+                data['bans_temporales'] = {}
+            if 'resultados' not in data:
+                data['resultados'] = []
+            if 'castigos' not in data:
+                data['castigos'] = []
+            if 'tickets' not in data:
+                data['tickets'] = {}
+            if 'panel_messages' not in data:
+                data['panel_messages'] = {}
+            if 'config' not in data:
+                data['config'] = {
+                    'ticket_category_id': None,
+                    'ticket_logs_channel_id': 1459298622930813121,
+                    'resultado_channel_id': 1459289305414635560
+                }
+            # Migrar log_channel_id antiguo a ticket_logs_channel_id
+            if 'log_channel_id' in data['config'] and 'ticket_logs_channel_id' not in data['config']:
+                data['config']['ticket_logs_channel_id'] = data['config']['log_channel_id']
+            # Agregar resultado_channel_id si no existe
+            if 'resultado_channel_id' not in data['config']:
+                data['config']['resultado_channel_id'] = 1459289305414635560
+            return data
+    except Exception as e:
+        print(f"❌ Error cargando {DATA_FILE}: {e}")
+        initial_data = create_initial_data()
+        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(initial_data, f, indent=2, ensure_ascii=False)
+        return initial_data
 
 def save_data():
     try:
-        # Guardar archivo principal
         with open(DATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        
-        # NUEVO: Backup automático cada vez que se guarda
-        backup_file = DATA_FILE.replace('.json', '_backup.json')
-        with open(backup_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        
-        # Log de stats al guardar
-        total_resultados = len(data.get('resultados', []))
-        total_jugadores = len(data.get('jugadores', {}))
-        print(f"💾 Datos guardados: {total_resultados} resultados, {total_jugadores} jugadores")
-        
     except Exception as e:
         print(f"❌ Error guardando datos: {e}")
 
@@ -332,24 +301,21 @@ async def on_ready():
         if database.init_database():
             print('✅ PostgreSQL inicializado correctamente')
             
-            # ✅ FIX: Cargar resultados a memoria (ANTES estaba pero no se guardaba en data)
+            # FIX: Cargar resultados en memoria (antes se descargaban pero no se usaban)
             resultados_db = database.get_all_resultados()
             if resultados_db:
-                data['resultados'] = resultados_db  # ← ESTE ERA EL BUG, faltaba esta línea
+                data['resultados'] = resultados_db
                 print(f'📊 Cargados {len(resultados_db)} resultados desde PostgreSQL')
-            else:
-                print('⚠️ No hay resultados en PostgreSQL')
             
-            # ✅ Cargar jugadores a memoria
+            # FIX: Cargar jugadores en memoria
             try:
                 jugadores_db = database.get_all_jugadores()
                 if jugadores_db:
-                    # Mergear con jugadores locales (PostgreSQL tiene prioridad)
                     for jid, jdata in jugadores_db.items():
                         data['jugadores'][jid] = jdata
                     print(f'👥 Cargados {len(jugadores_db)} jugadores desde PostgreSQL')
             except Exception as e:
-                print(f'⚠️ No se pudieron cargar jugadores desde PostgreSQL: {e}')
+                print(f'⚠️ No se pudieron cargar jugadores: {e}')
             
             # Cargar cooldowns activos desde PostgreSQL
             cooldowns_db = database.get_active_cooldowns()
@@ -388,10 +354,6 @@ async def on_ready():
     if not cleanup_task.is_running():
         cleanup_task.start()
         print("✅ Limpieza automática iniciada (cada 6 horas)")
-    
-    if not autosave_data.is_running():
-        autosave_data.start()
-        print("✅ Auto-guardado iniciado (cada 5 minutos)")
     
     try:
         # Sincronización global (puede tardar hasta 1 hora)
@@ -1601,16 +1563,6 @@ async def banchiterlist(
     except Exception as e:
         print(f"❌ No se pudo enviar DM: {e}")
 
-# === TASK: AUTO-GUARDADO CADA 5 MINUTOS ===
-@tasks.loop(minutes=5)
-async def autosave_data():
-    """Guarda automáticamente los datos cada 5 minutos para evitar pérdida de información"""
-    try:
-        save_data()
-        print(f"💾 Auto-guardado automático completado")
-    except Exception as e:
-        print(f"❌ Error en auto-guardado: {e}")
-
 @tasks.loop(hours=1)
 async def check_temp_bans():
     """Verifica bans temporales cada hora y los quita automáticamente"""
@@ -1864,85 +1816,6 @@ async def create_toptester_embed(mode: str):
 @bot.tree.command(name="test", description="Verifica que el bot esté funcionando")
 async def test(interaction: discord.Interaction):
     await interaction.response.send_message("✅ ¡Bot funcionando correctamente!")
-
-@bot.tree.command(name="stats", description="Ver estadísticas de datos guardados")
-@app_commands.checks.has_permissions(manage_roles=True)
-async def stats(interaction: discord.Interaction):
-    """Muestra estadísticas de los datos guardados"""
-    
-    total_resultados = len(data.get('resultados', []))
-    total_jugadores = len(data.get('jugadores', {}))
-    total_cooldowns = len(data.get('cooldowns', {}))
-    total_bans = len(data.get('bans_temporales', {}))
-    total_tickets = len(data.get('tickets', {}))
-    
-    # Contar testers únicos
-    testers = set()
-    for resultado in data.get('resultados', []):
-        if 'tester_id' in resultado:
-            testers.add(resultado['tester_id'])
-    
-    # Contar tests por modalidad
-    tests_por_modo = {}
-    for resultado in data.get('resultados', []):
-        modo = resultado.get('modalidad', 'Unknown')
-        tests_por_modo[modo] = tests_por_modo.get(modo, 0) + 1
-    
-    # Ver si hay backup
-    backup_file = DATA_FILE.replace('.json', '_backup.json')
-    has_backup = "✅ Sí" if os.path.exists(backup_file) else "❌ No"
-    
-    embed = discord.Embed(
-        title="📊 Estadísticas de Datos",
-        description="Estado actual de la base de datos",
-        color=discord.Color.blue(),
-        timestamp=datetime.now()
-    )
-    
-    embed.add_field(name="🎯 Resultados Totales", value=f"**{total_resultados}** tests", inline=True)
-    embed.add_field(name="👥 Jugadores", value=f"**{total_jugadores}** registrados", inline=True)
-    embed.add_field(name="👨‍🏫 Testers Únicos", value=f"**{len(testers)}** testers", inline=True)
-    
-    embed.add_field(name="⏰ Cooldowns Activos", value=f"**{total_cooldowns}** usuarios", inline=True)
-    embed.add_field(name="🚫 Bans Temporales", value=f"**{total_bans}** usuarios", inline=True)
-    embed.add_field(name="🎫 Tickets Abiertos", value=f"**{total_tickets}** tickets", inline=True)
-    
-    # Tests por modalidad
-    if tests_por_modo:
-        modo_text = ""
-        for modo in ['Mace', 'Sword', 'UHC', 'Crystal', 'NethOP', 'SMP', 'Axe', 'Dpot']:
-            if modo in tests_por_modo:
-                emoji = MODE_EMOJIS.get(modo, '🎮')
-                modo_text += f"{emoji} **{modo}:** {tests_por_modo[modo]} tests\n"
-        
-        embed.add_field(
-            name="📋 Tests por Modalidad",
-            value=modo_text if modo_text else "Sin datos",
-            inline=False
-        )
-    
-    embed.add_field(name="💾 Archivo Backup", value=has_backup, inline=True)
-    embed.add_field(name="📁 Archivo Principal", value=DATA_FILE, inline=False)
-    
-    # Advertencias
-    warnings = []
-    if total_resultados == 0:
-        warnings.append("⚠️ No hay resultados guardados")
-    if total_jugadores == 0:
-        warnings.append("⚠️ No hay jugadores registrados")
-    if not os.path.exists(backup_file):
-        warnings.append("⚠️ No hay archivo de backup")
-    
-    if warnings:
-        embed.add_field(
-            name="⚠️ Advertencias",
-            value="\n".join(warnings),
-            inline=False
-        )
-    
-    embed.set_footer(text="Usa este comando para verificar que los datos se estén guardando correctamente")
-    
-    await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="sacatester", description="Remueve un tester de la tabla de resultados")
 @app_commands.describe(
@@ -2470,6 +2343,106 @@ async def miperfil(interaction: discord.Interaction, usuario: discord.User = Non
 
 
 # COMANDO 2: /stats
+@bot.tree.command(name="stats", description="Ver estadísticas del bot")
+@app_commands.checks.has_permissions(administrator=True)
+async def stats(interaction: discord.Interaction):
+    """Muestra estadísticas globales del bot"""
+    
+    await interaction.response.defer(ephemeral=True)
+    
+    # Obtener stats desde PostgreSQL
+    stats_data = {}
+    if POSTGRESQL_AVAILABLE:
+        try:
+            import requests
+            response = requests.get('https://papayas-api-production.up.railway.app/api/stats')
+            if response.status_code == 200:
+                stats_data = response.json()
+        except:
+            pass
+    
+    # Si no hay PostgreSQL, calcular desde memoria
+    if not stats_data:
+        total_tests = len(data.get('resultados', []))
+        total_players = len(data.get('jugadores', {}))
+        
+        # Tests por modalidad
+        tests_by_mode = {}
+        for resultado in data.get('resultados', []):
+            modo = resultado.get('modalidad', 'Unknown')
+            tests_by_mode[modo] = tests_by_mode.get(modo, 0) + 1
+        
+        # Top testers
+        tester_counts = {}
+        for resultado in data.get('resultados', []):
+            tester_name = resultado.get('tester_name', 'Unknown')
+            tester_counts[tester_name] = tester_counts.get(tester_name, 0) + 1
+        
+        top_testers = sorted(tester_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        stats_data = {
+            'total_tests': total_tests,
+            'total_players': total_players,
+            'tests_by_mode': tests_by_mode,
+            'top_testers': [{'name': name, 'tests': count} for name, count in top_testers]
+        }
+    
+    # Crear embed
+    embed = discord.Embed(
+        title="📊 Estadísticas del Bot",
+        description="Papayas Tierlist - Estadísticas Globales",
+        color=discord.Color.gold(),
+        timestamp=datetime.now()
+    )
+    
+    embed.add_field(
+        name="📝 Total Tests",
+        value=f"**{stats_data.get('total_tests', 0)}**",
+        inline=True
+    )
+    embed.add_field(
+        name="👥 Total Jugadores",
+        value=f"**{stats_data.get('total_players', 0)}**",
+        inline=True
+    )
+    embed.add_field(
+        name="⏰ Cooldowns Activos",
+        value=f"**{len(data.get('cooldowns', {}))}**",
+        inline=True
+    )
+    
+    # Tests por modalidad
+    tests_by_mode = stats_data.get('tests_by_mode', {})
+    if tests_by_mode:
+        mode_text = ""
+        for modo, count in sorted(tests_by_mode.items(), key=lambda x: x[1], reverse=True):
+            emoji = MODE_EMOJIS.get(modo, '🎮')
+            mode_text += f"{emoji} **{modo}:** {count} tests\n"
+        
+        embed.add_field(
+            name="🎮 Tests por Modalidad",
+            value=mode_text or "Sin datos",
+            inline=False
+        )
+    
+    # Top testers
+    top_testers = stats_data.get('top_testers', [])
+    if top_testers:
+        tester_text = ""
+        for idx, tester in enumerate(top_testers[:5], 1):
+            tester_text += f"**{idx}.** {tester['name']} - {tester['tests']} tests\n"
+        
+        embed.add_field(
+            name="🏆 Top Testers",
+            value=tester_text,
+            inline=False
+        )
+    
+    embed.set_footer(text="Papayas Tierlist")
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
 # COMANDO 3: /rankings
 @bot.tree.command(name="rankings", description="Ver top 10 rankings")
 @app_commands.describe(modo="Modalidad a consultar (opcional, por defecto Overall)")
