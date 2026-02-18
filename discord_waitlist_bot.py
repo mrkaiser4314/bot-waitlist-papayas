@@ -1665,13 +1665,17 @@ async def ver_bans(interaction: discord.Interaction):
 async def toptester(interaction: discord.Interaction):
     """Muestra el top de testers con selector de modalidad"""
     
+    # IMPORTANTE: Defer inmediatamente para evitar timeout (3 segundos)
+    await interaction.response.defer()
+    
     # Crear view con selector de modo
     view = TopTesterView()
     
     # Mostrar embed inicial (Overall/Global)
     embed = await create_toptester_embed('Overall')
     
-    await interaction.response.send_message(embed=embed, view=view)
+    # Usar followup porque ya hicimos defer
+    await interaction.followup.send(embed=embed, view=view)
 
 class TopTesterView(discord.ui.View):
     def __init__(self):
@@ -1765,12 +1769,9 @@ async def create_toptester_embed(mode: str):
         
         top_global_text = ""
         for i, (tid, tdata) in enumerate(sorted_global[:10], 1):
-            try:
-                user = await bot.fetch_user(int(tid))
-                # Formato con región/servidor como en la imagen
-                top_global_text += f"**#{i}** - {user.mention} · **{tdata['count']} tests**\n"
-            except:
-                top_global_text += f"**#{i}** - {tdata['name']} · **{tdata['count']} tests**\n"
+            # Usar nombre guardado en vez de fetch (más rápido)
+            name = tdata['name']
+            top_global_text += f"**#{i}** - {name} · **{tdata['count']} tests**\n"
         
         embed.add_field(
             name="🌍 Top Global",
@@ -1790,11 +1791,9 @@ async def create_toptester_embed(mode: str):
         
         top_month_text = ""
         for i, (tid, tdata) in enumerate(sorted_month[:10], 1):
-            try:
-                user = await bot.fetch_user(int(tid))
-                top_month_text += f"**#{i}** - {user.mention} · **{tdata['count']} tests**\n"
-            except:
-                top_month_text += f"**#{i}** - {tdata['name']} · **{tdata['count']} tests**\n"
+            # Usar nombre guardado en vez de fetch (más rápido)
+            name = tdata['name']
+            top_month_text += f"**#{i}** - {name} · **{tdata['count']} tests**\n"
         
         embed.add_field(
             name="📅 Top del mes",  # SIN nombre de mes específico
