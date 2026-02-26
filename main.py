@@ -1,65 +1,65 @@
 """
 MAIN - Ejecuta Bot Discord + API Flask simultáneamente
-Este archivo arranca ambos servicios en el mismo proceso
+Optimizado para Render
 """
 
 import os
 import threading
 import time
+from database import init_database
 
-# ============================================
-# CONFIGURACIÓN
-# ============================================
+PORT = int(os.getenv("PORT", 10000))
 
-PORT = int(os.getenv('PORT', 10000))
-
-# ============================================
-# FUNCIÓN PARA CORRER API
-# ============================================
 
 def run_api():
     """Corre Flask API en thread separado"""
     print(f"🌐 Iniciando API en puerto {PORT}...")
     from api import app as flask_app
-    flask_app.run(host='0.0.0.0', port=PORT, debug=False, use_reloader=False)
+    flask_app.run(
+        host="0.0.0.0",
+        port=PORT,
+        debug=False,
+        use_reloader=False
+    )
 
-# ============================================
-# FUNCIÓN PARA CORRER BOT
-# ============================================
 
 def run_bot():
     """Corre Discord Bot"""
     print("🤖 Iniciando Discord Bot...")
-    import discord_waitlist_bot
+    import discord_waitlist_bot  # esto lo deja bloqueante
 
-# ============================================
-# MAIN - INICIAR AMBOS SERVICIOS
-# ============================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 50)
     print("🚀 PAPAYAS TIERLIST - BOT + API")
     print("=" * 50)
-    
-    # Verificar variables de entorno
-    if not os.getenv('DISCORD_TOKEN'):
+
+    # Verificar variables obligatorias
+    if not os.getenv("DISCORD_TOKEN"):
         print("❌ Error: DISCORD_TOKEN no configurado")
         exit(1)
-    
-    if not os.getenv('DATABASE_URL'):
+
+    if not os.getenv("DATABASE_URL"):
         print("❌ Error: DATABASE_URL no configurado")
         exit(1)
-    
+
     print("✅ Variables de entorno OK")
-    
-    # Iniciar API en thread separado (daemon)
-    api_thread = threading.Thread(target=run_api, daemon=True, name="API-Thread")
+
+    # Inicializar base de datos
+    print("🗄 Inicializando base de datos...")
+    if not init_database():
+        print("❌ No se pudo inicializar la base de datos")
+        exit(1)
+
+    print("✅ Base de datos lista")
+
+    # Iniciar API en background
+    api_thread = threading.Thread(target=run_api, daemon=True)
     api_thread.start()
-    
-    # Esperar un poco para que API inicie
+
     time.sleep(2)
     print("✅ API iniciada en background")
-    
-    # Iniciar bot en el main thread (bloqueante)
-    print("🎮 Iniciando bot Discord (esto mantiene el proceso activo)...")
+
+    # Iniciar bot (mantiene vivo el proceso)
+    print("🎮 Iniciando bot Discord...")
     run_bot()
