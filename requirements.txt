@@ -4,7 +4,7 @@ discord.py==2.3.2
 # Flask API
 flask==3.0.0
 flask-cors==4.0.0
-gunicorn==21.2.0
+waitress==3.0.2
 
 # Database
 psycopg2-binary==2.9.9
