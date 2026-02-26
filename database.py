@@ -9,30 +9,26 @@ import json
 from datetime import datetime
 
 def get_db_connection():
-    """Obtiene conexión a PostgreSQL con timeout"""
-    database_url = os.getenv('DATABASE_URL')
-    
+    """Obtiene conexión a PostgreSQL con SSL (requerido por Render)"""
+    database_url = os.getenv("DATABASE_URL")
+
     if not database_url:
         print("❌ No se encontró DATABASE_URL")
         return None
-    
-    if 'railway.internal' in database_url:
-        print(f"❌ DATABASE_URL usa hostname interno")
-        return None
-    
-    print(f"🔗 Conectando a PostgreSQL...")
-    
+
+    print("🔗 Conectando a PostgreSQL...")
+
     try:
-        # Añadir timeout de 10 segundos
         conn = psycopg2.connect(
             database_url,
+            sslmode="require",  # IMPORTANTE PARA RENDER
             connect_timeout=10,
-            options='-c statement_timeout=30000'  # 30 segundos max por query
+            options='-c statement_timeout=30000'
         )
         print("✅ Conexión exitosa")
         return conn
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Error conectando a PostgreSQL: {e}")
         return None
 
 def init_database():
